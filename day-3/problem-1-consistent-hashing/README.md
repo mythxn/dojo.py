@@ -166,24 +166,27 @@ graph TD
 
 ### Performance Benchmarking
 ```mermaid
-mindmap
-  root((Performance Tests))
-    Latency
-      Hash computation time
-      Node lookup speed
-      Virtual node management
-    Throughput
-      Requests per second
-      Concurrent hash operations
-      Batch processing efficiency
-    Memory
-      Hash ring storage overhead
-      Virtual node memory usage
-      Statistics tracking cost
-    Scalability
-      Performance with 1000+ nodes
-      Million+ virtual nodes
-      Geographic distribution
+graph TD
+    A[Performance Tests] --> B[Latency]
+    A --> C[Throughput]
+    A --> D[Memory]
+    A --> E[Scalability]
+    
+    B --> B1[Hash computation time]
+    B --> B2[Node lookup speed]
+    B --> B3[Virtual node management]
+    
+    C --> C1[Requests per second]
+    C --> C2[Concurrent hash operations]
+    C --> C3[Batch processing efficiency]
+    
+    D --> D1[Hash ring storage overhead]
+    D --> D2[Virtual node memory usage]
+    D --> D3[Statistics tracking cost]
+    
+    E --> E1[Performance with 1000+ nodes]
+    E --> E2[Million+ virtual nodes]
+    E --> E3[Geographic distribution]
 ```
 
 ## 💡 Interview Discussion Points

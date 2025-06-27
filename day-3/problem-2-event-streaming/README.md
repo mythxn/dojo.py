@@ -208,28 +208,31 @@ graph TD
 
 ### Performance Testing Scenarios
 ```mermaid
-mindmap
-  root((Performance Tests))
-    Throughput
-      Events per second
-      Batching efficiency
-      Network bandwidth usage
-      Storage I/O patterns
-    Latency
-      End-to-end latency
-      Producer publish time
-      Consumer processing delay
-      Rebalancing overhead
-    Scalability
-      Partition scaling
-      Consumer group scaling
-      Topic multiplication
-      Cross-datacenter replication
-    Reliability
-      Message durability
-      Ordering preservation
-      Exactly-once delivery
-      Graceful degradation
+graph TD
+    A[Performance Tests] --> B[Throughput]
+    A --> C[Latency]
+    A --> D[Scalability]
+    A --> E[Reliability]
+    
+    B --> B1[Events per second]
+    B --> B2[Batching efficiency]
+    B --> B3[Network bandwidth usage]
+    B --> B4[Storage I/O patterns]
+    
+    C --> C1[End-to-end latency]
+    C --> C2[Producer publish time]
+    C --> C3[Consumer processing delay]
+    C --> C4[Rebalancing overhead]
+    
+    D --> D1[Partition scaling]
+    D --> D2[Consumer group scaling]
+    D --> D3[Topic multiplication]
+    D --> D4[Cross-datacenter replication]
+    
+    E --> E1[Message durability]
+    E --> E2[Ordering preservation]
+    E --> E3[Exactly-once delivery]
+    E --> E4[Graceful degradation]
 ```
 
 ## 💡 Interview Discussion Points

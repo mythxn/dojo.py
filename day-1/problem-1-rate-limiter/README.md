@@ -38,13 +38,13 @@ graph TB
     F --> H[Return Rate Limited]
     
     subgraph "Token Bucket"
-    I[🪣 Bucket<br/>Capacity: 10<br/>Current: 7<br/>Refill: 2/sec]
+    I[Bucket<br/>Capacity: 10<br/>Current: 7<br/>Refill: 2/sec]
     end
     
     subgraph "Token Flow"
-    J[⏰ Timer] --> K[Add Tokens]
+    J[Timer] --> K[Add Tokens]
     K --> I
-    L[📥 Request] --> M[Remove Token]
+    L[Request] --> M[Remove Token]
     M --> I
     end
 ```
@@ -57,21 +57,23 @@ graph TB
 - **Best For**: Smooth, consistent rate limiting
 
 ```mermaid
-timeline
+gantt
     title Sliding Window (5 requests/10 seconds)
+    dateFormat X
+    axisFormat %s
     
-    section Time: 0-10s
-        Request 1 : 2s
-        Request 2 : 4s
-        Request 3 : 6s
-        Request 4 : 8s
-        Request 5 : 9s
+    section Time 0-10s
+    Request 1    :2, 2
+    Request 2    :4, 4
+    Request 3    :6, 6
+    Request 4    :8, 8
+    Request 5    :9, 9
     
-    section Time: 5-15s  
-        Window Slides : Requests 1,2 expire
-        Request 6 : 12s (Allowed)
-        Request 7 : 13s (Allowed)
-        Request 8 : 14s (Rejected - would exceed 5 in window)
+    section Time 5-15s
+    Window Slides :10, 11
+    Request 6     :12, 12
+    Request 7     :13, 13
+    Request 8 (Rejected) :14, 14
 ```
 
 ### 2. Token Bucket Algorithm
@@ -81,12 +83,12 @@ timeline
 
 ```mermaid
 graph LR
-    A[🪣 Empty Bucket<br/>Tokens: 0/10] --> B[⏰ 5 seconds pass<br/>+10 tokens]
-    B --> C[🪣 Full Bucket<br/>Tokens: 10/10]
-    C --> D[📥 Burst: 8 requests<br/>-8 tokens]
-    D --> E[🪣 Partial Bucket<br/>Tokens: 2/10]
-    E --> F[⏰ 1 second pass<br/>+2 tokens]
-    F --> G[🪣 Partial Bucket<br/>Tokens: 4/10]
+    A[Empty Bucket<br/>Tokens: 0/10] --> B[5 seconds pass<br/>+10 tokens]
+    B --> C[Full Bucket<br/>Tokens: 10/10]
+    C --> D[Burst: 8 requests<br/>-8 tokens]
+    D --> E[Partial Bucket<br/>Tokens: 2/10]
+    E --> F[1 second pass<br/>+2 tokens]
+    F --> G[Partial Bucket<br/>Tokens: 4/10]
 ```
 
 ## 🏗️ Implementation Strategy

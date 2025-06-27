@@ -16,7 +16,7 @@ graph TD
     end
     
     subgraph "Bounded Buffer"
-    B[🗃️ Buffer<br/>Capacity: 10<br/>Current: 7<br/>Strategy: FIFO]
+    B[Buffer<br/>Capacity: 10<br/>Current: 7<br/>Strategy: FIFO]
     end
     
     subgraph "Consumers"
@@ -37,14 +37,14 @@ graph TD
 graph LR
     subgraph "FIFO Buffer"
     A1[Item 1] --> A2[Item 2] --> A3[Item 3] --> A4[Item 4]
-    A5[↓ Insert] -.-> A1
-    A4 -.-> A6[Remove ↓]
+    A5[Insert] -.-> A1
+    A4 -.-> A6[Remove]
     end
     
-    subgraph "LIFO Buffer (Stack)"
+    subgraph "LIFO Buffer"
     B1[Item 1] --> B2[Item 2] --> B3[Item 3] --> B4[Item 4]
-    B5[↓ Insert] -.-> B4
-    B4 -.-> B6[Remove ↓]
+    B5[Insert] -.-> B4
+    B4 -.-> B6[Remove]
     end
     
     subgraph "Priority Buffer"
@@ -52,8 +52,8 @@ graph LR
     C2[Priority 5<br/>Normal Task]
     C3[Priority 3<br/>Important Task]
     C4[Priority 10<br/>Low Priority]
-    C5[↓ Insert by Priority]
-    C1 -.-> C6[Remove Highest ↓]
+    C5[Insert by Priority]
+    C1 -.-> C6[Remove Highest]
     end
 ```
 
@@ -85,17 +85,21 @@ graph TB
 stateDiagram-v2
     [*] --> Empty
     Empty --> Partial : put()
-    Partial --> Full : put() when size=capacity-1
+    Partial --> Full : put() when size equals capacity-1
     Full --> Partial : get()
-    Partial --> Empty : get() when size=1
-    Partial --> Partial : put()/get()
+    Partial --> Empty : get() when size equals 1
+    Partial --> Partial : put() or get()
     
     Empty --> [*] : shutdown()
     Partial --> [*] : shutdown()
     Full --> [*] : shutdown()
     
-    note right of Empty : Consumers block on get()
-    note right of Full : Producers block on put()
+    note right of Empty
+        Consumers block on get()
+    end note
+    note right of Full
+        Producers block on put()
+    end note
 ```
 
 ## 🏗️ Implementation Strategies
@@ -158,28 +162,31 @@ graph TD
 
 ### Concurrency Testing Approach
 ```mermaid
-mindmap
-  root((Producer-Consumer Tests))
-    Basic Functionality
-      FIFO ordering
-      LIFO ordering  
-      Priority ordering
-      Capacity limits
-    Thread Safety
-      Race conditions
-      Deadlock prevention
-      Data consistency
-      Multiple producers/consumers
-    Performance
-      High throughput
-      Low latency
-      Memory efficiency
-      CPU utilization
-    Edge Cases
-      Graceful shutdown
-      Exception handling
-      Buffer overflow
-      Consumer lag
+graph TD
+    A[Producer-Consumer Tests] --> B[Basic Functionality]
+    A --> C[Thread Safety]
+    A --> D[Performance]
+    A --> E[Edge Cases]
+    
+    B --> B1[FIFO ordering]
+    B --> B2[LIFO ordering]
+    B --> B3[Priority ordering]
+    B --> B4[Capacity limits]
+    
+    C --> C1[Race conditions]
+    C --> C2[Deadlock prevention]
+    C --> C3[Data consistency]
+    C --> C4[Multiple producers/consumers]
+    
+    D --> D1[High throughput]
+    D --> D2[Low latency]
+    D --> D3[Memory efficiency]
+    D --> D4[CPU utilization]
+    
+    E --> E1[Graceful shutdown]
+    E --> E2[Exception handling]
+    E --> E3[Buffer overflow]
+    E --> E4[Consumer lag]
 ```
 
 ### Testing Scenarios

@@ -147,28 +147,32 @@ graph TB
 
 ### Test Categories
 ```mermaid
-mindmap
-  root((LRU Cache Tests))
-    Basic Operations
-      Get/Put functionality
-      Capacity enforcement
-      LRU eviction order
-    TTL Features
-      Expiration behavior
-      Custom TTL override
-      Cleanup efficiency
-    Thread Safety
-      Concurrent access
-      Race condition prevention
-      Data consistency
-    Performance
-      O(1) operation verification
-      Memory usage patterns
-      High throughput scenarios
-    Edge Cases
-      Empty cache
-      Single item cache
-      Clock adjustments
+graph TD
+    A[LRU Cache Tests] --> B[Basic Operations]
+    A --> C[TTL Features]
+    A --> D[Thread Safety]
+    A --> E[Performance]
+    A --> F[Edge Cases]
+    
+    B --> B1[Get/Put functionality]
+    B --> B2[Capacity enforcement]
+    B --> B3[LRU eviction order]
+    
+    C --> C1[Expiration behavior]
+    C --> C2[Custom TTL override]
+    C --> C3[Cleanup efficiency]
+    
+    D --> D1[Concurrent access]
+    D --> D2[Race condition prevention]
+    D --> D3[Data consistency]
+    
+    E --> E1[O(1) operation verification]
+    E --> E2[Memory usage patterns]
+    E --> E3[High throughput scenarios]
+    
+    F --> F1[Empty cache]
+    F --> F2[Single item cache]
+    F --> F3[Clock adjustments]
 ```
 
 ## 💡 Interview Discussion Points

@@ -158,28 +158,31 @@ sequenceDiagram
 
 ### Testing Distributed Systems
 ```mermaid
-mindmap
-  root((DHT Testing))
-    Functional Testing
-      Basic CRUD operations
-      Ring topology maintenance
-      Data migration on join/leave
-      Replication consistency
-    Failure Testing
-      Node crashes
-      Network partitions
-      Byzantine failures
-      Gradual degradation
-    Performance Testing
-      Lookup latency O(log N)
-      Throughput under load
-      Storage efficiency
-      Network bandwidth usage
-    Consistency Testing
-      Read-your-writes
-      Eventual consistency
-      Conflict resolution
-      Vector clock ordering
+graph TD
+    A[DHT Testing] --> B[Functional Testing]
+    A --> C[Failure Testing]
+    A --> D[Performance Testing]
+    A --> E[Consistency Testing]
+    
+    B --> B1[Basic CRUD operations]
+    B --> B2[Ring topology maintenance]
+    B --> B3[Data migration on join/leave]
+    B --> B4[Replication consistency]
+    
+    C --> C1[Node crashes]
+    C --> C2[Network partitions]
+    C --> C3[Byzantine failures]
+    C --> C4[Gradual degradation]
+    
+    D --> D1[Lookup latency O log N]
+    D --> D2[Throughput under load]
+    D --> D3[Storage efficiency]
+    D --> D4[Network bandwidth usage]
+    
+    E --> E1[Read-your-writes]
+    E --> E2[Eventual consistency]
+    E --> E3[Conflict resolution]
+    E --> E4[Vector clock ordering]
 ```
 
 ### Chaos Engineering

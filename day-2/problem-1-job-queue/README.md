@@ -48,8 +48,12 @@ stateDiagram-v2
     Running --> Cancelled : Manual cancellation
     Cancelled --> [*]
     
-    note right of Retrying : Exponential backoff delay
-    note right of Failed : Moved to dead letter queue
+    note right of Retrying
+        Exponential backoff delay
+    end note
+    note right of Failed
+        Moved to dead letter queue
+    end note
 ```
 
 ## 🔑 Key Concepts
@@ -58,10 +62,10 @@ stateDiagram-v2
 ```mermaid
 graph TB
     subgraph "Job Priority Queue"
-    A[🔴 Critical: Priority 0<br/>System alerts, payments]
-    B[🟠 High: Priority 1-3<br/>User requests, notifications]
-    C[🟡 Normal: Priority 4-6<br/>Data processing, reports]
-    D[🟢 Low: Priority 7-10<br/>Cleanup, analytics]
+    A[Critical: Priority 0<br/>System alerts, payments]
+    B[High: Priority 1-3<br/>User requests, notifications]
+    C[Normal: Priority 4-6<br/>Data processing, reports]
+    D[Low: Priority 7-10<br/>Cleanup, analytics]
     end
     
     E[Worker Pool] --> A
@@ -177,23 +181,25 @@ graph TD
 
 ### Failure Scenarios
 ```mermaid
-mindmap
-  root((Failure Testing))
-    Worker Failures
-      Process crash during job
-      Memory exhaustion
-      Infinite loops
-      Resource leaks
-    System Failures
-      Database connectivity
-      Queue storage issues
-      Network partitions
-      Disk space exhaustion
-    Job Failures
-      Invalid input data
-      External service timeouts
-      Resource conflicts
-      Permission errors
+graph TD
+    A[Failure Testing] --> B[Worker Failures]
+    A --> C[System Failures]
+    A --> D[Job Failures]
+    
+    B --> B1[Process crash during job]
+    B --> B2[Memory exhaustion]
+    B --> B3[Infinite loops]
+    B --> B4[Resource leaks]
+    
+    C --> C1[Database connectivity]
+    C --> C2[Queue storage issues]
+    C --> C3[Network partitions]
+    C --> C4[Disk space exhaustion]
+    
+    D --> D1[Invalid input data]
+    D --> D2[External service timeouts]
+    D --> D3[Resource conflicts]
+    D --> D4[Permission errors]
 ```
 
 ## 💡 Interview Discussion Points
