@@ -6,7 +6,7 @@ import pytest
 import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from day1.producer_consumer import (
+from day_1.problem_3_producer_consumer.producer_consumer import (
     BoundedBuffer, Producer, Consumer, ProducerConsumerSystem,
     BufferStrategy, PriorityItem, WorkStealingSystem
 )

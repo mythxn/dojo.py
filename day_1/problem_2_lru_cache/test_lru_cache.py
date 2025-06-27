@@ -6,7 +6,7 @@ import pytest
 import time
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from day1.lru_cache import LRUCache, TTLCache, CacheWarmer, CacheStats
+from day_1.problem_2_lru_cache.lru_cache import LRUCache, TTLCache, CacheWarmer, CacheStats
 
 
 class TestLRUCache:

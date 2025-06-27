@@ -2,14 +2,14 @@
 Test cases for Rate Limiter implementations
 """
 
-import pytest
 import time
-import threading
 from concurrent.futures import ThreadPoolExecutor
-from day1.rate_limiter import (
-    SlidingWindowRateLimiter, 
-    TokenBucketRateLimiter,
-    RateLimitResult
+
+import pytest
+
+from day_1.problem_1_rate_limiter.rate_limiter import (
+    SlidingWindowRateLimiter,
+    TokenBucketRateLimiter
 )
 
 

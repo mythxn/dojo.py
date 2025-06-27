@@ -6,12 +6,12 @@ A comprehensive 3-day study plan with hands-on coding challenges based on 200+ r
 
 ```bash
 # Run tests for a specific problem
-pytest day-1/problem-1-rate-limiter/ -v
+pytest day_1/problem_1_rate_limiter/ -v
 pytest day-2/problem-1-job-queue/ -v  
 pytest day-3/problem-2-event-streaming/ -v
 
 # Run all tests for a day
-pytest day-1/ -v
+pytest day_1/ -v
 pytest day-2/ -v
 pytest day-3/ -v
 
@@ -107,10 +107,10 @@ class SlidingWindowRateLimiter:
 ### 3. Run Tests Frequently
 ```bash
 # Run specific test as you implement
-pytest day-1/problem-1-rate-limiter/test_rate_limiter.py::TestSlidingWindowRateLimiter::test_basic_rate_limiting -v
+pytest day_1/problem_1_rate_limiter/test_rate_limiter.py::TestSlidingWindowRateLimiter::test_basic_rate_limiting -v
 
 # Run all tests for the problem
-pytest day-1/problem-1-rate-limiter/ -v
+pytest day_1/problem_1_rate_limiter/ -v
 ```
 
 ### 4. Study the Test Cases
@@ -241,7 +241,7 @@ After completing this program:
 
 ```bash
 # Begin your journey
-cd day-1/problem-1-rate-limiter
+cd day_1/problem_1_rate_limiter
 cat README.md  # Read the detailed guide
 pytest test_rate_limiter.py -v  # See what you need to build
 # Open rate_limiter.py and start implementing!
