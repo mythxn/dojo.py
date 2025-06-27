@@ -2,6 +2,7 @@
 
 ## Context
 - Interview in 3 days for senior software engineer backend position
+- **Interview Duration**: 1 hour - focused, intensive technical assessment
 - Non-leetcode style - focuses on real-world problem solving
 - Language: Python (2 years professional experience, but 2 years gap)
 - Need hands-on coding practice with assessment system
@@ -13,10 +14,11 @@
 3. **Day 3**: Performance, scaling, and integration challenges
 
 ## Assessment Approach
-- Interactive problem-solving with difficulty progression
-- Real-world scenarios mimicking actual backend challenges
-- Code review and optimization exercises
-- System design discussions with code implementation
+- **1-hour format**: Quick problem identification and solution implementation
+- Interactive problem-solving with time-boxed challenges
+- Real-world scenarios mimicking actual backend challenges  
+- Focus on demonstrating thought process and code quality
+- System design discussions with rapid prototyping
 
 ## Commands to Run
 - `python start_here.py` - Begin the track
