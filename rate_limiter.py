@@ -16,19 +16,20 @@ FOLLOW-UP QUESTIONS:
 - What happens if the system restarts?
 - How do you handle different payment types (card vs bank transfer)?
 """
-
+import threading
+import time
+from collections import deque, defaultdict
 from dataclasses import dataclass
 from typing import Dict
-import time
-import threading
 
 
 @dataclass
 class RateLimitResult:
     allowed: bool
     remaining_requests: int
-    reset_time: float
-    
+    reset_time: float # when will my quota fully reset
+    retry_after: float # when can i make the next request
+
 
 class PaymentRateLimiter:
     """Rate limiter for payment attempts using sliding window algorithm."""
@@ -41,8 +42,10 @@ class PaymentRateLimiter:
             max_requests: Maximum requests allowed in window
             window_seconds: Time window in seconds
         """
-        # TODO: Implement initialization
-        pass
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.bucket: Dict[str, deque] = defaultdict(deque)
+        self.lock = threading.Lock()
     
     def is_payment_allowed(self, user_id: str) -> RateLimitResult:
         """
@@ -54,14 +57,46 @@ class PaymentRateLimiter:
         Returns:
             RateLimitResult with decision and metadata
         """
-        # TODO: Implement sliding window logic
-        pass
+        now = time.time()
+
+        with self.lock:
+            q = self.bucket[user_id]
+            self._clear_expired(user_id, now)
+
+            if len(q) >= self.max_requests:
+                oldest = q[0]
+                retry_after = oldest + self.window_seconds - now
+                reset_time = oldest + self.window_seconds
+                return RateLimitResult(
+                    allowed=False,
+                    remaining_requests=0,
+                    reset_time=reset_time,
+                    retry_after=retry_after
+                )
+            else:
+                q.append(now)
+                oldest = q[0]  # safe now — q has at least 1 element
+                remaining = self.max_requests - len(q)
+                reset_time = oldest + self.window_seconds
+                return RateLimitResult(
+                    allowed=True,
+                    remaining_requests=remaining,
+                    reset_time=reset_time,
+                    retry_after=0
+                )
+
     
     def reset_user_limits(self, user_id: str) -> None:
         """Reset limits for a specific user (admin action)."""
-        # TODO: Implement reset logic
-        pass
+        with self.lock:
+            self.bucket[user_id].clear()
 
+    def _clear_expired(self, user_id: str, cur_time) -> None:
+        """Clear expired rate limits for a specific user (admin action)."""
+        q = self.bucket[user_id]
+
+        while q and q[0] <= cur_time - self.window_seconds:
+            q.popleft()
 
 # Example usage and test cases
 if __name__ == "__main__":
