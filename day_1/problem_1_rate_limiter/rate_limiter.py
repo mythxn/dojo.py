@@ -38,6 +38,12 @@ class RateLimitResult:
     retry_after: Optional[float] = None
 
 
+@dataclass
+class TokenBucket:
+    tokens: int
+    last_refill_time: float
+
+
 class SlidingWindowRateLimiter:
     def __init__(self, max_requests: int, window_size_seconds: int):
         """
@@ -110,7 +116,7 @@ class TokenBucketRateLimiter:
         self.capacity = capacity
         self.refill_rate = refill_rate
         self.lock = threading.Lock()
-        self.buckets: Dict[str, Dict[str, float]] = {}
+        self.buckets: Dict[str, TokenBucket] = {}
     
     def is_allowed(self, key: str, tokens_requested: int = 1) -> RateLimitResult:
         """
@@ -127,23 +133,23 @@ class TokenBucketRateLimiter:
 
         with self.lock:
             if key not in self.buckets:
-                self.buckets[key] = {
-                    "tokens": self.capacity,
-                    "last_refill_time": current_time,
-                }
+                self.buckets[key] = TokenBucket(
+                    tokens=self.capacity,
+                    last_refill_time=current_time
+                )
 
             bucket = self.buckets[key]
             self._refill_tokens(bucket, current_time)
 
-            if bucket["tokens"] >= tokens_requested:
-                bucket["tokens"] -= tokens_requested
+            if bucket.tokens >= tokens_requested:
+                bucket.tokens -= tokens_requested
                 return RateLimitResult(
                     allowed=True,
-                    remaining_requests=int(bucket["tokens"]),
+                    remaining_requests=int(bucket.tokens),
                     reset_time=current_time
                 )
             else:
-                needed_tokens = tokens_requested - bucket["tokens"]
+                needed_tokens = tokens_requested - bucket.tokens
                 retry_after = needed_tokens / self.refill_rate
                 return RateLimitResult(
                     allowed=False,
@@ -152,10 +158,9 @@ class TokenBucketRateLimiter:
                     retry_after=retry_after
                 )
 
-    def _refill_tokens(self, bucket_info: dict, current_time: float):
+    def _refill_tokens(self, bucket: TokenBucket, current_time: float):
         """Refill tokens based on elapsed time."""
-        last_refill = bucket_info["last_refill_time"]
-        elapsed = current_time - last_refill
+        elapsed = current_time - bucket.last_refill_time
         refill = elapsed * self.refill_rate
-        bucket_info["tokens"] = min(self.capacity, bucket_info["tokens"] + refill)
-        bucket_info["last_refill_time"] = current_time
+        bucket.tokens = min(self.capacity, bucket.tokens + refill)
+        bucket.last_refill_time = current_time
