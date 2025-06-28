@@ -111,13 +111,11 @@ class CircuitBreaker:
     def get_stats(self) -> dict:
         with self.lock:
             total = len(self.history)
-            failures = sum(1 for h in self.history if not h.success)
             return {
                 "state": self.state.value,
                 "failures": self.failure_count,
                 "successes": self.success_count,
                 "total_calls": total,
-                "failure_rate": round((failures / total) * 100, 2) if total else 0.0
             }
 
     def reset(self):
