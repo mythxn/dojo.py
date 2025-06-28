@@ -162,5 +162,5 @@ class TokenBucketRateLimiter:
         """Refill tokens based on elapsed time."""
         elapsed = current_time - bucket.last_refill_time
         refill = elapsed * self.refill_rate
-        bucket.tokens = min(self.capacity, bucket.tokens + refill)
+        bucket.tokens = min(self.capacity, bucket.tokens + int(refill))
         bucket.last_refill_time = current_time

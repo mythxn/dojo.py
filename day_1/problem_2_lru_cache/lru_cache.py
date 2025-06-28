@@ -32,19 +32,21 @@ from collections import OrderedDict
 
 
 @dataclass
-class CacheStats:
-    hits: int = 0
-    misses: int = 0
-    evictions: int = 0
-    expired_entries: int = 0
-
-
-@dataclass
 class CacheEntry:
     value: Any
     access_time: float
     expiry_time: Optional[float] = None
 
+class Node:
+    def __init__(self, key: str, value, ttl=None):
+        self.key = key
+        self.value = value
+        self.prev = None
+        self.next = None
+        self.expiry = time.time() + ttl if ttl else None
+
+    def is_expired(self):
+        return self.expiry is not None and time.time() > self.expiry
 
 class LRUCache:
     def __init__(self, capacity: int, default_ttl: Optional[float] = None):
@@ -55,7 +57,12 @@ class LRUCache:
             capacity: Maximum number of entries
             default_ttl: Default time-to-live in seconds (None = no expiration)
         """
-        pass  # TODO: Implement
+        self.capacity = capacity
+        self.cache = {}
+        self.head = Node("head", None)
+        self.tail = Node("tail", None)
+        self.head.next = self.tail
+        self.tail.prev = self.head
     
     def get(self, key: str) -> Optional[Any]:
         """
@@ -67,7 +74,17 @@ class LRUCache:
         Returns:
             Value if found and not expired, None otherwise
         """
-        pass  # TODO: Implement
+        if key in self.cache:
+            node = self.cache[key]
+            if node.is_expired():
+                self._remove(node)
+                del self.cache[key]
+                return None
+            else:
+                self._remove(node)
+                self._add_to_front(node)
+                return node.value
+        return None
     
     def put(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
         """
@@ -78,7 +95,17 @@ class LRUCache:
             value: Value to store
             ttl: Time-to-live in seconds (overrides default_ttl)
         """
-        pass  # TODO: Implement
+        if key in self.cache:
+            self._remove(self.cache[key])
+
+        node = Node(key, value, ttl)
+        self.cache[key] = node
+        self._add_to_front(node)
+
+        if len(self.cache) > self.capacity:
+            lru = self.tail.prev
+            self._remove(lru)
+            del self.cache[lru.key]
     
     def delete(self, key: str) -> bool:
         """
@@ -90,20 +117,23 @@ class LRUCache:
         Returns:
             True if key existed, False otherwise
         """
-        pass  # TODO: Implement
+        if key in self.cache:
+            node = self.cache[key]
+            self._remove(node)
+            del self.cache[key]
+            return True
+        return False
     
     def clear(self) -> None:
         """Clear all entries from cache."""
-        pass  # TODO: Implement
+        self.cache = {}
+        self.head.next = self.tail
+        self.tail.prev = self.head
     
     def size(self) -> int:
         """Get current number of entries."""
-        pass  # TODO: Implement
-    
-    def is_expired(self, entry: CacheEntry, current_time: float) -> bool:
-        """Check if entry is expired."""
-        pass  # TODO: Implement
-    
+        return len(self.cache)
+
     def cleanup_expired(self) -> int:
         """
         Remove all expired entries.
@@ -111,67 +141,31 @@ class LRUCache:
         Returns:
             Number of entries removed
         """
-        pass  # TODO: Implement
-    
-    def get_stats(self) -> CacheStats:
-        """Get cache statistics."""
-        pass  # TODO: Implement
+        removed = 0
+        for key in list(self.cache.keys()):
+            node = self.cache[key]
+            if node.is_expired():
+                removed += 1
+                self._remove(node)
+                del self.cache[key]
+        return removed
     
     def _evict_lru(self) -> None:
         """Evict least recently used entry."""
-        pass  # TODO: Implement
-    
-    def _move_to_end(self, key: str) -> None:
-        """Move key to end (most recently used)."""
-        pass  # TODO: Implement
+        lru = self.tail.prev
+        if lru != self.head:
+            self._remove(lru)
+            del self.cache[lru.key]
 
+    def _remove(self, node: Node) -> None:
+        """Remove node from cache."""
+        prev = node.prev
+        next = node.next
+        prev.next = next
+        next.prev = prev
 
-class TTLCache:
-    """Alternative implementation focusing on TTL efficiency"""
-    
-    def __init__(self, capacity: int, default_ttl: float):
-        pass  # TODO: Implement
-    
-    def get(self, key: str) -> Optional[Any]:
-        pass  # TODO: Implement
-    
-    def put(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
-        pass  # TODO: Implement
-    
-    def _background_cleanup(self) -> None:
-        """Background thread for cleaning expired entries."""
-        pass  # TODO: Implement
-
-
-class CacheWarmer:
-    """Utility for cache warming and bulk operations"""
-    
-    def __init__(self, cache: LRUCache):
-        pass  # TODO: Implement
-    
-    def warm_cache(self, data_loader: callable, keys: list) -> None:
-        """Warm cache with data from loader function."""
-        pass  # TODO: Implement
-    
-    def bulk_get(self, keys: list) -> Dict[str, Any]:
-        """Get multiple keys efficiently."""
-        pass  # TODO: Implement
-    
-    def bulk_put(self, items: Dict[str, Any], ttl: Optional[float] = None) -> None:
-        """Put multiple items efficiently."""
-        pass  # TODO: Implement
-
-
-class MultiLevelCache:
-    """Multi-level cache implementation (L1: memory, L2: disk, etc.)"""
-    
-    def __init__(self, l1_cache: LRUCache, l2_cache: Optional[Any] = None):
-        pass  # TODO: Implement
-    
-    def get(self, key: str) -> Optional[Any]:
-        """Get from L1, fallback to L2."""
-        pass  # TODO: Implement
-    
-    def put(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
-        """Put to both L1 and L2."""
-        pass  # TODO: Implement
+    def _add_to_front(self, node: Node) -> None:
+        node.prev = self.head
+        node.next = self.head.next
+        self.head.next.prev = node
+        self.head.next = node
