@@ -9,16 +9,16 @@ An LRU (Least Recently Used) cache with TTL (Time To Live) combines efficient ca
 ### LRU Cache Data Structure
 ```mermaid
 graph TB
-    subgraph "HashMap for O(1) Access"
-    A[Key: 'user_1'] --> B[Node*]
-    C[Key: 'user_2'] --> D[Node*]
-    E[Key: 'user_3'] --> F[Node*]
+    subgraph HashMap["HashMap for O(1) Access"]
+    A["Key: 'user_1'"] --> B["Node*"]
+    C["Key: 'user_2'"] --> D["Node*"]
+    E["Key: 'user_3'"] --> F["Node*"]
     end
     
-    subgraph "Doubly Linked List for O(1) Ordering"
-    G[HEAD] <--> H[user_3<br/>Most Recent] 
-    H <--> I[user_1<br/>Middle]
-    I <--> J[user_2<br/>Least Recent]
+    subgraph DLL["Doubly Linked List for O(1) Ordering"]
+    G[HEAD] <--> H["user_3<br/>Most Recent"] 
+    H <--> I["user_1<br/>Middle"]
+    I <--> J["user_2<br/>Least Recent"]
     J <--> K[TAIL]
     end
     
@@ -62,9 +62,9 @@ graph LR
     C --> F[Update HashMap]
     E --> F
     
-    subgraph "Access Pattern"
-    G[Item Accessed] --> H[Move to Head]
-    H --> I[Update Access Time]
+    subgraph AccessPattern["Access Pattern"]
+    G["Item Accessed"] --> H["Move to Head"]
+    H --> I["Update Access Time"]
     end
 ```
 
@@ -75,17 +75,17 @@ graph TD
     A --> C[Proactive Expiration]
     A --> D[Hybrid Approach]
     
-    B --> B1[Check on access]
-    B --> B2[Simple implementation]
-    B --> B3[May waste memory]
+    B --> B1["Check on access"]
+    B --> B2["Simple implementation"]
+    B --> B3["May waste memory"]
     
-    C --> C1[Background cleanup]
-    C --> C2[Timer-based removal]
-    C --> C3[Consistent memory usage]
+    C --> C1["Background cleanup"]
+    C --> C2["Timer-based removal"]
+    C --> C3["Consistent memory usage"]
     
-    D --> D1[Lazy + Background]
-    D --> D2[Best performance]
-    D --> D3[Production ready]
+    D --> D1["Lazy + Background"]
+    D --> D2["Best performance"]
+    D --> D3["Production ready"]
 ```
 
 ## 🏗️ Implementation Deep Dive
@@ -130,17 +130,17 @@ graph TB
     A --> C[Data Consistency]
     A --> D[Performance Impact]
     
-    B --> B1[Multiple threads accessing same key]
-    B --> B2[Eviction during access]
-    B --> B3[Cleanup vs access conflicts]
+    B --> B1["Multiple threads accessing same key"]
+    B --> B2["Eviction during access"]
+    B --> B3["Cleanup vs access conflicts"]
     
-    C --> C1[HashMap corruption]
-    C --> C2[Linked list integrity]
-    C --> C3[Statistics accuracy]
+    C --> C1["HashMap corruption"]
+    C --> C2["Linked list integrity"]
+    C --> C3["Statistics accuracy"]
     
-    D --> D1[Lock contention]
-    D --> D2[Read vs write locks]
-    D --> D3[Lock-free alternatives]
+    D --> D1["Lock contention"]
+    D --> D2["Read vs write locks"]
+    D --> D3["Lock-free alternatives"]
 ```
 
 ## 🧪 Test Strategy
@@ -154,25 +154,25 @@ graph TD
     A --> E[Performance]
     A --> F[Edge Cases]
     
-    B --> B1[Get/Put functionality]
-    B --> B2[Capacity enforcement]
-    B --> B3[LRU eviction order]
+    B --> B1["Get/Put functionality"]
+    B --> B2["Capacity enforcement"]
+    B --> B3["LRU eviction order"]
     
-    C --> C1[Expiration behavior]
-    C --> C2[Custom TTL override]
-    C --> C3[Cleanup efficiency]
+    C --> C1["Expiration behavior"]
+    C --> C2["Custom TTL override"]
+    C --> C3["Cleanup efficiency"]
     
-    D --> D1[Concurrent access]
-    D --> D2[Race condition prevention]
-    D --> D3[Data consistency]
+    D --> D1["Concurrent access"]
+    D --> D2["Race condition prevention"]
+    D --> D3["Data consistency"]
     
-    E --> E1[O(1) operation verification]
-    E --> E2[Memory usage patterns]
-    E --> E3[High throughput scenarios]
+    E --> E1["O(1) operation verification"]
+    E --> E2["Memory usage patterns"]
+    E --> E3["High throughput scenarios"]
     
-    F --> F1[Empty cache]
-    F --> F2[Single item cache]
-    F --> F3[Clock adjustments]
+    F --> F1["Empty cache"]
+    F --> F2["Single item cache"]
+    F --> F3["Clock adjustments"]
 ```
 
 ## 💡 Interview Discussion Points
@@ -182,10 +182,10 @@ graph TD
 **Q: "Why use HashMap + Doubly Linked List?"**
 ```mermaid
 graph LR
-    A[HashMap Only] --> A1[❌ No ordering info]
-    B[Array Only] --> B1[❌ O(n) search]
-    C[Linked List Only] --> C1[❌ O(n) access]
-    D[HashMap + DLL] --> D1[✅ O(1) access + ordering]
+    A["HashMap Only"] --> A1["❌ No ordering info"]
+    B["Array Only"] --> B1["❌ O(n) search"]
+    C["Linked List Only"] --> C1["❌ O(n) access"]
+    D["HashMap + DLL"] --> D1["✅ O(1) access + ordering"]
 ```
 
 **Q: "How do you handle TTL efficiently?"**
@@ -229,7 +229,7 @@ sequenceDiagram
     participant Database
     
     Browser->>WebServer: Request user profile
-    WebServer->>LRUCache: get(user_id)
+    WebServer->>LRUCache: get user_id
     alt Cache Hit
         LRUCache-->>WebServer: User data
         WebServer-->>Browser: Profile page
@@ -237,7 +237,7 @@ sequenceDiagram
         LRUCache-->>WebServer: null
         WebServer->>Database: SELECT user data
         Database-->>WebServer: User data
-        WebServer->>LRUCache: put(user_id, data, ttl=300)
+        WebServer->>LRUCache: put user_id data ttl=300
         WebServer-->>Browser: Profile page
     end
 ```
@@ -245,13 +245,13 @@ sequenceDiagram
 ### Multi-Level Caching
 ```mermaid
 graph TD
-    A[Client Request] --> B[L1: Memory Cache<br/>Fast, Small]
-    B -->|Miss| C[L2: Redis Cache<br/>Network, Medium]
-    C -->|Miss| D[L3: Database<br/>Slow, Large]
+    A["Client Request"] --> B["L1: Memory Cache<br/>Fast, Small"]
+    B -->|Miss| C["L2: Redis Cache<br/>Network, Medium"]
+    C -->|Miss| D["L3: Database<br/>Slow, Large"]
     
-    D --> E[Store in L2]
-    E --> F[Store in L1]
-    F --> G[Return to Client]
+    D --> E["Store in L2"]
+    E --> F["Store in L1"]
+    F --> G["Return to Client"]
     
     B -->|Hit| G
     C -->|Hit| F
@@ -262,26 +262,26 @@ graph TD
 ### Cache Warming
 ```mermaid
 graph LR
-    A[Application Start] --> B[Cache Warmer]
-    B --> C[Load Popular Keys]
-    C --> D[Predict Access Patterns]
-    D --> E[Pre-populate Cache]
-    E --> F[Monitor Hit Rates]
-    F --> G[Adjust Strategy]
+    A["Application Start"] --> B["Cache Warmer"]
+    B --> C["Load Popular Keys"]
+    C --> D["Predict Access Patterns"]
+    D --> E["Pre-populate Cache"]
+    E --> F["Monitor Hit Rates"]
+    F --> G["Adjust Strategy"]
 ```
 
 ### Cache Statistics
 ```mermaid
 graph TB
-    A[Cache Metrics] --> B[Hit Rate]
-    A --> C[Miss Rate]
-    A --> D[Eviction Rate]
-    A --> E[Memory Usage]
+    A["Cache Metrics"] --> B["Hit Rate"]
+    A --> C["Miss Rate"]
+    A --> D["Eviction Rate"]
+    A --> E["Memory Usage"]
     
-    B --> F[Monitor Performance]
-    C --> G[Identify Problems]
-    D --> H[Tune Capacity]
-    E --> I[Resource Planning]
+    B --> F["Monitor Performance"]
+    C --> G["Identify Problems"]
+    D --> H["Tune Capacity"]
+    E --> I["Resource Planning"]
 ```
 
 ## 🚀 Implementation Guide
