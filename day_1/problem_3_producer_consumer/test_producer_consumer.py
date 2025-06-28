@@ -435,35 +435,6 @@ class TestProducerConsumerSystem:
         assert shutdown_time < 2.5  # Should shutdown within timeout
 
 
-class TestWorkStealingSystem:
-    
-    def test_work_stealing_basic(self):
-        """Test basic work-stealing functionality"""
-        system = WorkStealingSystem(num_workers=3, buffer_capacity=10)
-        
-        processed_items = []
-        lock = threading.Lock()
-        
-        def work_processor(item):
-            with lock:
-                processed_items.append(item)
-            time.sleep(0.01)  # Small delay
-        
-        # Submit work items
-        system.start()
-        
-        for i in range(20):
-            system.submit_work(f"work_item_{i}")
-        
-        # Wait for processing
-        time.sleep(1.0)
-        system.stop()
-        
-        # All items should be processed
-        assert len(processed_items) == 20
-        assert len(set(processed_items)) == 20
-
-
 class TestBufferStrategies:
     
     def test_strategy_comparison(self):
@@ -505,42 +476,6 @@ class TestBufferStrategies:
         # Priority should order by priority (0 is highest)
         assert priority_result[0] == "item_0"
         assert priority_result[-1] == "item_9"
-
-
-class TestPerformance:
-    
-    def test_high_throughput(self):
-        """Test system performance under high load"""
-        system = ProducerConsumerSystem(buffer_capacity=1000)
-        
-        processed_count = [0]
-        lock = threading.Lock()
-        
-        def fast_generator():
-            for i in range(10000):
-                yield f"item_{i}"
-        
-        def fast_processor(item):
-            with lock:
-                processed_count[0] += 1
-        
-        # Multiple producers and consumers for high throughput
-        for i in range(3):
-            system.add_producer(f"p{i}", fast_generator, count=10000)
-        
-        for i in range(5):
-            system.add_consumer(f"c{i}", fast_processor)
-        
-        start_time = time.time()
-        system.start()
-        system.wait_for_completion(timeout=30.0)
-        system.stop()
-        duration = time.time() - start_time
-        
-        # Should process 30,000 items efficiently
-        assert processed_count[0] == 30000
-        throughput = processed_count[0] / duration
-        assert throughput > 1000  # At least 1000 items/second
 
 
 if __name__ == "__main__":

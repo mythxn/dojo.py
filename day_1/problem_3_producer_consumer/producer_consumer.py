@@ -225,7 +225,11 @@ class Producer:
             buffer: Shared buffer
             producer_id: Unique producer identifier
         """
-        pass  # TODO: Implement
+        self.buffer = buffer
+        self.producer_id = producer_id
+        self._running = threading.Event()
+        self._running.set()
+        self._thread = None
     
     def produce(self, item_generator: Callable, count: int = None) -> None:
         """
@@ -235,19 +239,34 @@ class Producer:
             item_generator: Function that generates items
             count: Number of items to produce (None = infinite)
         """
-        pass  # TODO: Implement
+        def run():
+            produced = 0
+            while self._running.is_set() and (count is None or produced > count):
+                item = item_generator()
+                success = self.buffer.put(item, timeout=1)
+                if success:
+                    produced += 1
+                else:
+                    time.sleep(0.01)
+        self._thread = threading.Thread(target=run, daemon=True)
+        self._thread.start()
     
     def produce_batch(self, items: List[Any]) -> None:
         """Produce a batch of items."""
-        pass  # TODO: Implement
+        for item in items:
+            if not self._running.is_set():
+                break
+            self.buffer.put(item, timeout=1)
     
     def stop(self) -> None:
         """Stop the producer."""
-        pass  # TODO: Implement
+        self._running.clear()
+        if self._thread:
+            self._thread.join()
     
     def is_running(self) -> bool:
         """Check if producer is running."""
-        pass  # TODO: Implement
+        return self._thread.is_set()
 
 
 class Consumer:
@@ -259,7 +278,11 @@ class Consumer:
             buffer: Shared buffer
             consumer_id: Unique consumer identifier
         """
-        pass  # TODO: Implement
+        self.buffer = buffer
+        self.consumer_id = consumer_id
+        self._running = threading.Event()
+        self._running.set()
+        self._thread = None
     
     def consume(self, processor: Callable[[Any], None]) -> None:
         """
@@ -268,8 +291,16 @@ class Consumer:
         Args:
             processor: Function to process each item
         """
-        pass  # TODO: Implement
-    
+        def run():
+            while self._running.is_set():
+                item = self.buffer.get(timeout=1)
+                if item:
+                    processor(item)
+                else:
+                    time.sleep(0.01)
+        self._thread = threading.Thread(target=run, daemon=True)
+        self._thread.start()
+
     def consume_batch(self, processor: Callable[[List[Any]], None], 
                      batch_size: int = 10, batch_timeout: float = 1.0) -> None:
         """
@@ -280,15 +311,31 @@ class Consumer:
             batch_size: Maximum batch size
             batch_timeout: Maximum time to wait for full batch
         """
-        pass  # TODO: Implement
+
+        def run():
+            batch = []
+            start_time = time.time()
+            while self._running.is_set():
+                item = self.buffer.get(timeout=batch_timeout)
+                if item is not None:
+                    batch.append(item)
+                if len(batch) >= batch_size or (time.time() - start_time >= batch_timeout and batch):
+                    processor(batch)
+                    batch = []
+                    start_time = time.time()
+
+        self._thread = threading.Thread(target=run, daemon=True)
+        self._thread.start()
     
     def stop(self) -> None:
         """Stop the consumer."""
-        pass  # TODO: Implement
+        self._running.clear()
+        if self._thread:
+            self._thread.join()
     
     def is_running(self) -> bool:
         """Check if consumer is running."""
-        pass  # TODO: Implement
+        return self._thread.is_set()
 
 
 class ProducerConsumerSystem:
@@ -300,7 +347,9 @@ class ProducerConsumerSystem:
             buffer_capacity: Buffer capacity
             strategy: Buffer strategy
         """
-        pass  # TODO: Implement
+        self.buffer = BoundedBuffer(capacity=buffer_capacity, strategy=strategy)
+        self.producers = []
+        self.consumers = []
     
     def add_producer(self, producer_id: str, item_generator: Callable, 
                     count: Optional[int] = None) -> Producer:
@@ -309,28 +358,38 @@ class ProducerConsumerSystem:
     
     def add_consumer(self, consumer_id: str, processor: Callable) -> Consumer:
         """Add a consumer to the system."""
-        pass  # TODO: Implement
+        consumer = Consumer(self.buffer, consumer_id)
+        self.consumers.append(consumer)
+        consumer.consume(processor)
+        return consumer
     
     def start(self) -> None:
         """Start all producers and consumers."""
-        pass  # TODO: Implement
+        pass  # already auto-started on add
     
     def stop(self, timeout: float = 5.0) -> None:
         """Stop all producers and consumers gracefully."""
-        pass  # TODO: Implement
-    
-    def get_stats(self) -> ProducerConsumerStats:
-        """Get system statistics."""
-        pass  # TODO: Implement
-    
+        self.buffer.shutdown()
+
+        for producer in self.producers:
+            producer.stop()
+
+        for consumer in self.consumers:
+            consumer.stop()
+
     def wait_for_completion(self, timeout: Optional[float] = None) -> bool:
-        """
-        Wait for all producers to finish and buffer to be consumed.
-        
-        Returns:
-            True if completed, False if timeout
-        """
-        pass  # TODO: Implement
+        start = time.time()
+        while True:
+            all_done = all(not p.is_running() for p in self.producers)
+            buffer_empty = self.buffer.is_empty()
+
+            if all_done and buffer_empty:
+                return True
+
+            if timeout and (time.time() - start > timeout):
+                return False
+
+            time.sleep(0.05)
 
 
 class WorkStealingSystem:
