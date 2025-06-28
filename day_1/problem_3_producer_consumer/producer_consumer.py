@@ -241,13 +241,38 @@ class Producer:
         """
         def run():
             produced = 0
-            while self._running.is_set() and (count is None or produced > count):
-                item = item_generator()
-                success = self.buffer.put(item, timeout=1)
-                if success:
-                    produced += 1
-                else:
-                    time.sleep(0.01)
+            gen = None
+            
+            # Initialize the generator if needed
+            if callable(item_generator):
+                gen = item_generator()
+                # Check if calling it returned a generator
+                if not hasattr(gen, '__next__'):
+                    # It's not a generator, it's a function that returns values
+                    gen = None
+            else:
+                # It's already a generator
+                gen = item_generator
+            
+            while self._running.is_set() and (count is None or produced < count):
+                try:
+                    if gen is not None:
+                        # Use the generator
+                        item = next(gen)
+                    else:
+                        # Call the function each time
+                        item = item_generator()
+                        
+                    success = self.buffer.put(item, timeout=1)
+                    if success:
+                        produced += 1
+                    else:
+                        time.sleep(0.01)
+                except (StopIteration, TypeError):
+                    break
+            
+            # Mark as not running when finished
+            self._running.clear()
         self._thread = threading.Thread(target=run, daemon=True)
         self._thread.start()
     
@@ -266,7 +291,7 @@ class Producer:
     
     def is_running(self) -> bool:
         """Check if producer is running."""
-        return self._thread.is_set()
+        return self._running.is_set()
 
 
 class Consumer:
@@ -295,7 +320,11 @@ class Consumer:
             while self._running.is_set():
                 item = self.buffer.get(timeout=1)
                 if item:
-                    processor(item)
+                    try:
+                        processor(item)
+                    except Exception as e:
+                        # Log error but continue processing other items
+                        print(f"Error processing item {item}: {e}")
                 else:
                     time.sleep(0.01)
         self._thread = threading.Thread(target=run, daemon=True)
@@ -335,7 +364,7 @@ class Consumer:
     
     def is_running(self) -> bool:
         """Check if consumer is running."""
-        return self._thread.is_set()
+        return self._running.is_set()
 
 
 class ProducerConsumerSystem:
@@ -354,7 +383,10 @@ class ProducerConsumerSystem:
     def add_producer(self, producer_id: str, item_generator: Callable, 
                     count: Optional[int] = None) -> Producer:
         """Add a producer to the system."""
-        pass  # TODO: Implement
+        producer = Producer(self.buffer, producer_id)
+        self.producers.append(producer)
+        producer.produce(item_generator, count)
+        return producer
     
     def add_consumer(self, consumer_id: str, processor: Callable) -> Consumer:
         """Add a consumer to the system."""
