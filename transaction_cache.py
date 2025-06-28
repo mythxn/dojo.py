@@ -23,15 +23,13 @@ class Node:
 
 
 class TransactionCache:
-    def __init__(self, max_size: int, ttl_seconds: int):
+    def __init__(self, max_size, ttl_seconds):
         self.max_size = max_size
         self.ttl_seconds = ttl_seconds
-        self.map: Dict[str, Node] = {}
-        self.head = None  # Most recently used
-        self.tail = None  # Least recently used
-        self.lock = threading.Lock()
-        self.hits = 0
-        self.misses = 0
+        self.map = {}  # txn_id → Node
+        self.head = None  # MRU
+        self.tail = None  # LRU
+        self.lock = threading.Lock()  # for thread safety
 
     def put(self, txn: Transaction):
         with self.lock:
@@ -57,17 +55,14 @@ class TransactionCache:
             now = datetime.now()
 
             if not node:
-                self.misses += 1
                 return None
 
             if node.expiry < now:
                 self._remove_node(node)
                 del self.map[txn_id]
-                self.misses += 1
                 return None
 
             self._move_to_front(node)
-            self.hits += 1
             return node.txn
 
     def update_status(self, txn_id: str, new_status: str) -> bool:
@@ -84,15 +79,6 @@ class TransactionCache:
             node.txn.status = new_status
             self._move_to_front(node)
             return True
-
-    def get_cache_stats(self) -> Dict[str, int]:
-        with self.lock:
-            return {
-                "hits": self.hits,
-                "misses": self.misses,
-                "current_size": len(self.map),
-                "max_size": self.max_size
-            }
 
     def _evict_lru(self):
         if self.tail:
@@ -159,6 +145,3 @@ if __name__ == "__main__":
 
     print("[8] Get txn1 → should be expired")
     print("txn1:", cache.get("txn1"))
-
-    print("[9] Final cache stats:")
-    print(cache.get_cache_stats())
