@@ -125,25 +125,26 @@ class TestBoundedBuffer:
     
     def test_shutdown_mechanism(self):
         """Test graceful shutdown wakes up blocked threads"""
-        buffer = BoundedBuffer(capacity=1)
+        # Use two separate buffers to test both scenarios independently
+        full_buffer = BoundedBuffer(capacity=1)
+        empty_buffer = BoundedBuffer(capacity=1)
         
-        # Fill buffer
-        buffer.put("item1")
+        # Fill one buffer, leave other empty
+        full_buffer.put("item1")
         
         results = {}
         
         def blocked_producer():
             # This will block since buffer is full
-            result = buffer.put("item2", timeout=10)  # Long timeout
+            result = full_buffer.put("item2", timeout=10)  # Long timeout
             results['producer_result'] = result
         
         def blocked_consumer():
-            # Empty the buffer first, then this will block
-            buffer.get()
-            result = buffer.get(timeout=10)  # Long timeout  
+            # This will block since buffer is empty
+            result = empty_buffer.get(timeout=10)  # Long timeout  
             results['consumer_result'] = result
         
-        # Start blocked threads
+        # Start blocked threads  
         with ThreadPoolExecutor(max_workers=2) as executor:
             executor.submit(blocked_producer)
             executor.submit(blocked_consumer)
@@ -152,7 +153,8 @@ class TestBoundedBuffer:
             time.sleep(0.1)
             
             # Shutdown should wake up blocked threads
-            buffer.shutdown()
+            full_buffer.shutdown()   # Wake up producer
+            empty_buffer.shutdown()  # Wake up consumer
         
         # Blocked operations should return False/None after shutdown
         assert results.get('producer_result') == False

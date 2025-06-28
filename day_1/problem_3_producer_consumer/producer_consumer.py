@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from enum import Enum
 import heapq
 from concurrent.futures import ThreadPoolExecutor
+from collections import deque
 
 
 class BufferStrategy(Enum):
@@ -68,8 +69,14 @@ class BoundedBuffer:
             capacity: Maximum buffer size
             strategy: Buffer strategy (FIFO, LIFO, PRIORITY)
         """
-        pass  # TODO: Implement
-    
+        self.capacity = capacity
+        self.strategy = strategy
+        self.buffer = [] if self.strategy == BufferStrategy.PRIORITY else deque()
+        self.lock = threading.Lock()
+        self.not_full = threading.Condition(self.lock)
+        self.not_empty = threading.Condition(self.lock)
+        self.shutdown_flag = False
+
     def put(self, item: Any, priority: int = 0, timeout: Optional[float] = None) -> bool:
         """
         Put item in buffer, blocking if full.
@@ -82,8 +89,31 @@ class BoundedBuffer:
         Returns:
             True if item was added, False if timeout
         """
-        pass  # TODO: Implement
-    
+        with self.not_full:
+            end_time = time.time() + timeout if timeout else None
+
+            while len(self.buffer) >= self.capacity:
+                if self.shutdown_flag:
+                    return False
+                remaining = end_time - time.time() if end_time else None
+                if remaining is not None and remaining <= 0:
+                    return False
+                self.not_full.wait(timeout=remaining)
+
+                if self.shutdown_flag:
+                    return False
+
+            # Final shutdown check before adding item
+            if self.shutdown_flag:
+                return False
+
+            if self.strategy == BufferStrategy.PRIORITY:
+                heapq.heappush(self.buffer, PriorityItem(priority, item))
+            else:
+                self.buffer.append(item)
+            self.not_empty.notify()
+            return True
+
     def get(self, timeout: Optional[float] = None) -> Optional[Any]:
         """
         Get item from buffer, blocking if empty.
@@ -94,7 +124,31 @@ class BoundedBuffer:
         Returns:
             Item if available, None if timeout or shutdown
         """
-        pass  # TODO: Implement
+        with self.not_empty:
+            end_time = time.time() + timeout if timeout else None
+
+            while not self.buffer:
+                if self.shutdown_flag:
+                    return None
+                remaining = end_time - time.time() if end_time else None
+                if remaining is not None and remaining <= 0:
+                    return None
+                self.not_empty.wait(timeout=remaining)
+                if self.shutdown_flag:
+                    return None
+
+            # Final shutdown check before removing item
+            if self.shutdown_flag:
+                return None
+
+            if self.strategy == BufferStrategy.PRIORITY:
+                item = heapq.heappop(self.buffer).item
+            elif self.strategy == BufferStrategy.LIFO:
+                item = self.buffer.pop()
+            else:  # FIFO
+                item = self.buffer.popleft()
+            self.not_full.notify()
+            return item
     
     def put_nowait(self, item: Any, priority: int = 0) -> bool:
         """
@@ -103,7 +157,16 @@ class BoundedBuffer:
         Returns:
             True if item was added, False if buffer full
         """
-        pass  # TODO: Implement
+        with self.lock:
+            if len(self.buffer) >= self.capacity:
+                return False
+            else:
+                if self.strategy == BufferStrategy.PRIORITY:
+                    heapq.heappush(self.buffer, PriorityItem(priority, item))
+                else:
+                    self.buffer.append(item)
+                    self.not_empty.notify()  # wake waiting consumers
+                return True
     
     def get_nowait(self) -> Optional[Any]:
         """
@@ -112,23 +175,45 @@ class BoundedBuffer:
         Returns:
             Item if available, None if empty
         """
-        pass  # TODO: Implement
+        with self.lock:
+            if not self.buffer:
+                return None
+            else:
+                if self.strategy == BufferStrategy.PRIORITY:
+                    item = heapq.heappop(self.buffer).item
+                elif self.strategy == BufferStrategy.LIFO:
+                    item = self.buffer.pop()
+                else:  # FIFO
+                    item = self.buffer.popleft()
+                self.not_full.notify()  # wake waiting producers
+                return item
     
     def size(self) -> int:
         """Get current buffer size."""
-        pass  # TODO: Implement
+        with self.lock:
+            return len(self.buffer)
     
     def is_full(self) -> bool:
         """Check if buffer is full."""
-        pass  # TODO: Implement
+        return len(self.buffer) >= self.capacity
     
     def is_empty(self) -> bool:
         """Check if buffer is empty."""
-        pass  # TODO: Implement
+        with self.lock:
+            return len(self.buffer) == 0
     
     def shutdown(self) -> None:
-        """Signal shutdown to wake up blocked threads."""
-        pass  # TODO: Implement
+        """
+        Shutdown the buffer, waking up all blocked threads.
+        After shutdown, all put() operations return False and get() operations return None.
+        """
+        # Need to acquire both condition variable locks to notify properly
+        with self.not_full:
+            self.shutdown_flag = True
+            self.not_full.notify_all()  # Wake up all blocked producers
+        
+        with self.not_empty:
+            self.not_empty.notify_all()  # Wake up all blocked consumers
 
 
 class Producer:
