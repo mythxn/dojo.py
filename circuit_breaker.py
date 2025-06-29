@@ -1,10 +1,10 @@
-from dataclasses import dataclass
-from typing import Callable, Any, Optional
-from datetime import datetime, timedelta
+import random
 import threading
 import time
+from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
-import random
+from typing import Callable, Any, Optional
 
 
 class CircuitState(Enum):
@@ -15,10 +15,10 @@ class CircuitState(Enum):
 
 @dataclass
 class CircuitBreakerConfig:
-    failure_threshold: int = 3        # Failures before opening
-    timeout_seconds: int = 5          # Time before trying HALF_OPEN
-    success_threshold: int = 2        # Successes before closing
-    response_timeout: int = 500       # Max response time in ms
+    failure_threshold: int = 3
+    timeout_seconds: int = 5
+    success_threshold: int = 2
+    response_timeout: int = 500
 
 
 @dataclass
@@ -26,11 +26,7 @@ class CallResult:
     success: bool
     response_time_ms: float
     error_message: Optional[str] = None
-    timestamp: datetime = None
-
-    def __post_init__(self):
-        if self.timestamp is None:
-            self.timestamp = datetime.now()
+    timestamp: datetime = datetime.now()
 
 
 class CircuitBreakerOpenError(Exception):
@@ -44,57 +40,55 @@ class CircuitBreaker:
         self.state = CircuitState.CLOSED
         self.failure_count = 0
         self.success_count = 0
-        self.last_failure_time = None
+        self.last_failure_time: Optional[datetime] = None
         self.lock = threading.Lock()
-        self.history = []
+        self.history: list[CallResult] = []
 
     def call(self, func: Callable, *args, **kwargs) -> Any:
         if not self._can_execute():
-            raise CircuitBreakerOpenError(f'Circuit {self.name} is open')
+            raise CircuitBreakerOpenError(f"Circuit {self.name} is OPEN")
 
-        start_time = datetime.now()
+        start = datetime.now()
         try:
             result = func(*args, **kwargs)
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
-            self._record_success(elapsed)
+            duration_ms = (datetime.now() - start).total_seconds() * 1000
+            self._record_success(duration_ms)
             return result
         except Exception as e:
-            elapsed = (datetime.now() - start_time).total_seconds() * 1000
-            self._record_failure(str(e), elapsed)
-            raise e
+            duration_ms = (datetime.now() - start).total_seconds() * 1000
+            self._record_failure(str(e), duration_ms)
+            raise
 
     def _can_execute(self) -> bool:
         with self.lock:
-            if self.state == CircuitState.CLOSED or self.state == CircuitState.HALF_OPEN:
+            if self.state == CircuitState.CLOSED:
                 return True
-            elif self.state == CircuitState.OPEN:
-                if self._should_attempt_reset():
-                    self.state = CircuitState.HALF_OPEN
-                    return True
-                return False
+            if self.state == CircuitState.HALF_OPEN:
+                return True
+            if self.state == CircuitState.OPEN and self._should_attempt_reset():
+                self.state = CircuitState.HALF_OPEN
+                return True
+            return False
 
     def _should_attempt_reset(self) -> bool:
-        if self.last_failure_time is None:
+        if not self.last_failure_time:
             return False
-        return (datetime.now() - self.last_failure_time).total_seconds() >= self.config.timeout_seconds
+        elapsed = (datetime.now() - self.last_failure_time).total_seconds()
+        return elapsed >= self.config.timeout_seconds
 
-    def _record_success(self, response_time_ms: float) -> None:
+    def _record_success(self, duration_ms: float) -> None:
         with self.lock:
-            self.history.append(CallResult(True, response_time_ms))
+            self.history.append(CallResult(True, duration_ms))
+            self.success_count += 1
+            self.failure_count = 0
 
-            if self.state == CircuitState.HALF_OPEN:
-                self.success_count += 1
-                if self.success_count >= self.config.success_threshold:
-                    self.state = CircuitState.CLOSED
-                    self.failure_count = 0
-                    self.success_count = 0
+            if self.state == CircuitState.HALF_OPEN and self.success_count >= self.config.success_threshold:
+                self.state = CircuitState.CLOSED
+                self.success_count = 0
 
-            elif self.state == CircuitState.CLOSED:
-                self.failure_count = 0
-
-    def _record_failure(self, error_message: str, response_time_ms: float) -> None:
+    def _record_failure(self, error: str, duration_ms: float) -> None:
         with self.lock:
-            self.history.append(CallResult(False, response_time_ms, error_message))
+            self.history.append(CallResult(False, duration_ms, error))
             self.failure_count += 1
             self.success_count = 0
 
@@ -110,12 +104,11 @@ class CircuitBreaker:
 
     def get_stats(self) -> dict:
         with self.lock:
-            total = len(self.history)
             return {
                 "state": self.state.value,
                 "failures": self.failure_count,
                 "successes": self.success_count,
-                "total_calls": total,
+                "total_calls": len(self.history),
             }
 
     def reset(self):
