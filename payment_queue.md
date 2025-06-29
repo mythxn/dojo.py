@@ -1,341 +1,337 @@
-# 🚀 Understanding Payment Processing Queue with Analogies & Diagrams
+# Payment Queue - Interview Guide
 
-## 🎯 Goal
+## Problem Statement
+**Time**: 20-25 minutes  
+**Difficulty**: Medium  
+**Frequency**: 50%+ of payment company interviews
 
-Design a priority queue for payment processing that:
+Design a priority-based payment processing queue that handles high-priority payments first while ensuring all payments eventually get processed with retry logic.
 
-* Supports **3 priority levels**: HIGH, MEDIUM, LOW
-* Maintains **FIFO** within same priority
-* Provides **thread-safe** multi-worker processing
-* Handles **graceful shutdown** without data loss
-* Implements **dead letter queue** for failed tasks
+## Business Context
+- VIP customers get payment priority
+- Large transactions need faster processing
+- Failed payments should retry automatically
+- Batch processing during off-peak hours
+- Compliance requires payment audit trails
 
----
+## System Overview
 
-## 🏪 Real-World Analogy
+```mermaid
+graph TD
+    A[Payment Request] --> B{Determine Priority}
+    B --> C[High Priority Queue]
+    B --> D[Medium Priority Queue]  
+    B --> E[Low Priority Queue]
+    
+    F[Worker Threads] --> G[Process High First]
+    G --> H[Process Medium Next]
+    H --> I[Process Low Last]
+    
+    J[Failed Payment] --> K[Retry Queue]
+    K --> L[Exponential Backoff]
+    L --> M[Dead Letter Queue]
+    
+    style C fill:#FF6B6B
+    style D fill:#FFE66D
+    style E fill:#4ECDC4
+    style M fill:#95A5A6
+```
 
-### Imagine: A busy restaurant kitchen
+## Interview Approach
 
-* **HIGH Priority**: Emergency orders (food poisoning complaint)
-* **MEDIUM Priority**: Regular dinner orders
-* **LOW Priority**: Prep work for tomorrow
+### Step 1: Clarify Requirements (3-4 minutes)
 
-The kitchen has multiple **cooks** (workers) who grab the **highest priority** ticket first. If someone burns a dish, they **retry** it. After 3 failed attempts, the order goes to the **manager** (dead letter queue).
+**Ask these questions:**
+- How many priority levels? (typically 3: high, medium, low)
+- What determines priority? (user tier, amount, merchant type)
+- How many worker threads? (based on throughput needs)
+- Retry strategy for failures? (exponential backoff)
+- Dead letter queue for permanent failures?
+- Need metrics and monitoring?
 
----
+### Step 2: Design Priority System (3-4 minutes)
 
-## 📊 Priority Queue Structure
+**Priority Assignment Logic:**
 
 ```mermaid
 flowchart TD
-    subgraph "Priority Queue"
-        H[HIGH Priority Queue]
-        M[MEDIUM Priority Queue]  
-        L[LOW Priority Queue]
-    end
+    A[Payment Request] --> B{VIP Customer?}
+    B -->|Yes| C[HIGH Priority]
+    B -->|No| D{Amount > $1000?}
+    D -->|Yes| E[MEDIUM Priority]
+    D -->|No| F{Rush Processing?}
+    F -->|Yes| E
+    F -->|No| G[LOW Priority]
     
-    subgraph "Workers"
-        W1[Worker 1]
-        W2[Worker 2]
-        W3[Worker 3]
-    end
-    
-    subgraph "Processing"
-        P[Task Processors]
-        DLQ[Dead Letter Queue]
-    end
-    
-    H --> W1
-    H --> W2
-    H --> W3
-    M --> W1
-    M --> W2
-    M --> W3
-    L --> W1
-    L --> W2
-    L --> W3
-    
-    W1 --> P
-    W2 --> P
-    W3 --> P
-    P --> DLQ
+    style C fill:#FF6B6B
+    style E fill:#FFE66D
+    style G fill:#4ECDC4
 ```
 
----
+### Step 3: Design Core Classes (4-5 minutes)
 
-## 📦 Core Data Structures
-
-### 1. `PaymentPriority`
 ```python
+from enum import Enum
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+import threading
+import time
+import queue
+from typing import Dict, List, Optional
+
 class PaymentPriority(Enum):
-    HIGH = 1    # Fraud alerts, chargebacks
-    MEDIUM = 2  # Regular payments
-    LOW = 3     # Reports, analytics
-```
+    HIGH = 1    # VIP customers, large amounts
+    MEDIUM = 2  # Regular priority
+    LOW = 3     # Batch processing
 
-### 2. `PaymentTask`
-```python
+class PaymentStatus(Enum):
+    PENDING = "pending"
+    PROCESSING = "processing" 
+    COMPLETED = "completed"
+    FAILED = "failed"
+    RETRYING = "retrying"
+    DEAD_LETTER = "dead_letter"
+
 @dataclass
-class PaymentTask:
+class Payment:
     id: str
-    payment_id: str
-    task_type: str
+    user_id: str
+    amount_cents: int
+    currency: str
+    payment_method: str
     priority: PaymentPriority
-    payload: dict
     created_at: datetime
-    max_retries: int = 3
     retry_count: int = 0
-```
+    max_retries: int = 3
 
----
-
-## 🏗️ Queue Architecture
-
-### Internal Structure:
-```python
-class PaymentProcessingQueue:
-    def __init__(self, num_workers: int = 3):
-        self.priority_queues = {
-            PaymentPriority.HIGH: queue.Queue(),
-            PaymentPriority.MEDIUM: queue.Queue(),
-            PaymentPriority.LOW: queue.Queue()
-        }
-        self.processors = {}  # task_type -> processor_function
-        self.workers = []
-        self.dead_letter_queue = []
-        self.shutdown_event = threading.Event()
-```
-
----
-
-## 🔄 Queue Operations
-
-### 🎯 `enqueue_payment(task)`
-
-Adds task to appropriate priority queue:
-
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant Q as PaymentQueue
-    participant PQ as PriorityQueue
-
-    C->>Q: enqueue_payment(task)
-    Q->>Q: Determine priority
-    alt HIGH Priority
-        Q->>PQ: Add to HIGH queue
-    else MEDIUM Priority
-        Q->>PQ: Add to MEDIUM queue
-    else LOW Priority
-        Q->>PQ: Add to LOW queue
-    end
-    Q->>C: Return success
-```
-
----
-
-### ⚡ Worker Processing Loop
-
-Each worker follows this pattern:
-
-```python
-def _worker_loop(self, worker_id: int):
-    while not self.shutdown_event.is_set():
-        task = self._get_next_task()  # Priority order: HIGH → MEDIUM → LOW
-        if task:
-            success = self._process_task(task)
-            if not success:
-                self._handle_task_failure(task)
-        else:
-            time.sleep(0.1)  # Brief pause if no tasks
-```
-
----
-
-## 🎯 Priority Processing Logic
-
-### `_get_next_task()` Implementation:
-
-```python
-def _get_next_task(self) -> Optional[PaymentTask]:
-    # Try HIGH priority first
-    try:
-        return self.priority_queues[PaymentPriority.HIGH].get_nowait()
-    except queue.Empty:
-        pass
-    
-    # Then MEDIUM priority
-    try:
-        return self.priority_queues[PaymentPriority.MEDIUM].get_nowait()
-    except queue.Empty:
-        pass
+class PaymentQueue:
+    def __init__(self, max_workers: int = 5):
+        # Priority queues for different levels
+        self.high_queue = queue.Queue()
+        self.medium_queue = queue.Queue()
+        self.low_queue = queue.Queue()
+        self.retry_queue = queue.PriorityQueue()
+        self.dead_letter_queue = queue.Queue()
         
-    # Finally LOW priority
-    try:
-        return self.priority_queues[PaymentPriority.LOW].get_nowait()
-    except queue.Empty:
-        return None
+        # Worker management
+        self.max_workers = max_workers
+        self.workers = []
+        self.running = False
+        
+        # Payment tracking
+        self.payment_status = {}
+        self.lock = threading.Lock()
+        
+        # Statistics
+        self.stats = {
+            "processed": 0,
+            "failed": 0,
+            "retried": 0,
+            "dead_lettered": 0
+        }
 ```
 
----
+### Step 4: Implement Core Processing (8-10 minutes)
 
-## 💀 Dead Letter Queue Flow
-
-```mermaid
-flowchart TD
-    T[Task Processing] --> S{Success?}
-    S -->|Yes| C[Complete]
-    S -->|No| R{Retries < Max?}
-    R -->|Yes| RT[Increment Retry Count]
-    RT --> RQ[Re-queue Task]
-    R -->|No| DLQ[Dead Letter Queue]
-    
-    style DLQ fill:#ff6b6b
-    style C fill:#51cf66
-```
-
-### Retry Logic:
 ```python
-def _handle_task_failure(self, task: PaymentTask):
-    task.retry_count += 1
-    if task.retry_count < task.max_retries:
-        # Re-queue for retry
-        self.enqueue_payment(task)
+def enqueue_payment(self, payment: Payment) -> None:
+    """Add payment to appropriate priority queue."""
+    with self.lock:
+        self.payment_status[payment.id] = PaymentStatus.PENDING
+    
+    # Route to correct priority queue
+    if payment.priority == PaymentPriority.HIGH:
+        self.high_queue.put(payment)
+    elif payment.priority == PaymentPriority.MEDIUM:
+        self.medium_queue.put(payment)
     else:
-        # Send to dead letter queue
-        with self.lock:
-            self.dead_letter_queue.append(task)
-```
+        self.low_queue.put(payment)
 
----
-
-## 🛑 Graceful Shutdown
-
-### Shutdown Sequence:
-1. **Signal Stop**: Set shutdown event
-2. **Wait for Workers**: Allow current tasks to complete
-3. **Save State**: Persist unprocessed tasks
-4. **Clean Exit**: Join all worker threads
-
-```python
-def stop_workers(self, timeout_seconds: int = 30):
-    self.shutdown_event.set()
+def start_workers(self) -> None:
+    """Start worker threads for processing payments."""
+    self.running = True
     
-    # Wait for workers to finish current tasks
-    for worker in self.workers:
-        worker.join(timeout=timeout_seconds)
+    for i in range(self.max_workers):
+        worker = threading.Thread(
+            target=self._worker_loop,
+            name=f"PaymentWorker-{i}",
+            daemon=True
+        )
+        worker.start()
+        self.workers.append(worker)
     
-    # Log remaining tasks
-    remaining = self._count_remaining_tasks()
-    print(f"Shutdown complete. {remaining} tasks remaining.")
-```
+    # Start retry processor
+    retry_worker = threading.Thread(
+        target=self._retry_processor,
+        daemon=True
+    )
+    retry_worker.start()
 
----
+def _worker_loop(self) -> None:
+    """Main worker loop that processes payments by priority."""
+    while self.running:
+        payment = self._get_next_payment()
+        
+        if payment:
+            self._process_payment(payment)
+        else:
+            time.sleep(0.1)  # No work available
 
-## 📈 Task Processors
-
-### Registration Pattern:
-```python
-# Register processors for different task types
-queue.register_processor("charge_card", charge_card_processor)
-queue.register_processor("fraud_check", fraud_check_processor)
-queue.register_processor("send_notification", send_notification_processor)
-```
-
-### Processor Function Signature:
-```python
-def charge_card_processor(task: PaymentTask) -> bool:
+def _get_next_payment(self) -> Optional[Payment]:
+    """Get next payment following priority order."""
+    # Try high priority first
     try:
-        # Process the payment
-        process_payment(task.payload)
-        return True
+        return self.high_queue.get_nowait()
+    except queue.Empty:
+        pass
+    
+    # Then medium priority
+    try:
+        return self.medium_queue.get_nowait()
+    except queue.Empty:
+        pass
+    
+    # Finally low priority
+    try:
+        return self.low_queue.get_nowait()
+    except queue.Empty:
+        pass
+    
+    return None
+
+def _process_payment(self, payment: Payment) -> None:
+    """Process a single payment with error handling."""
+    with self.lock:
+        self.payment_status[payment.id] = PaymentStatus.PROCESSING
+    
+    try:
+        # Simulate payment processing
+        success = self._call_payment_processor(payment)
+        
+        if success:
+            with self.lock:
+                self.payment_status[payment.id] = PaymentStatus.COMPLETED
+                self.stats["processed"] += 1
+        else:
+            self._handle_payment_failure(payment)
+            
     except Exception as e:
-        logger.error(f"Payment failed: {e}")
-        return False
+        self._handle_payment_failure(payment, str(e))
+
+def _handle_payment_failure(self, payment: Payment, error: str = None) -> None:
+    """Handle failed payment with retry logic."""
+    payment.retry_count += 1
+    
+    if payment.retry_count <= payment.max_retries:
+        # Schedule for retry with exponential backoff
+        retry_delay = 2 ** (payment.retry_count - 1)  # 1s, 2s, 4s
+        retry_time = time.time() + retry_delay
+        
+        with self.lock:
+            self.payment_status[payment.id] = PaymentStatus.RETRYING
+            self.stats["retried"] += 1
+        
+        self.retry_queue.put((retry_time, payment))
+    
+    else:
+        # Max retries exceeded, send to dead letter queue
+        with self.lock:
+            self.payment_status[payment.id] = PaymentStatus.DEAD_LETTER
+            self.stats["dead_lettered"] += 1
+        
+        self.dead_letter_queue.put(payment)
+
+def _retry_processor(self) -> None:
+    """Background thread that processes retry queue."""
+    while self.running:
+        try:
+            retry_time, payment = self.retry_queue.get(timeout=1.0)
+            
+            # Wait until retry time
+            current_time = time.time()
+            if current_time < retry_time:
+                time.sleep(retry_time - current_time)
+            
+            # Re-enqueue for processing
+            self.enqueue_payment(payment)
+            
+        except queue.Empty:
+            continue
+
+def _call_payment_processor(self, payment: Payment) -> bool:
+    """Simulate calling external payment processor."""
+    time.sleep(0.1)  # Simulate processing time
+    
+    # Simulate success rates by priority
+    import random
+    if payment.priority == PaymentPriority.HIGH:
+        return random.random() > 0.1  # 90% success
+    elif payment.priority == PaymentPriority.MEDIUM:
+        return random.random() > 0.2  # 80% success
+    else:
+        return random.random() > 0.3  # 70% success
 ```
 
----
+### Step 5: Add Monitoring (3-4 minutes)
 
-## 📊 Monitoring & Stats
-
-### `get_queue_stats()` returns:
 ```python
-{
-    "queue_sizes": {
-        "HIGH": 5,
-        "MEDIUM": 23,
-        "LOW": 102
-    },
-    "active_workers": 3,
-    "processed_count": 1547,
-    "failed_count": 12,
-    "dead_letter_count": 3
-}
+def get_queue_stats(self) -> Dict[str, int]:
+    """Get queue statistics for monitoring."""
+    with self.lock:
+        return {
+            "high_queue_size": self.high_queue.qsize(),
+            "medium_queue_size": self.medium_queue.qsize(), 
+            "low_queue_size": self.low_queue.qsize(),
+            "retry_queue_size": self.retry_queue.qsize(),
+            "dead_letter_size": self.dead_letter_queue.qsize(),
+            "total_processed": self.stats["processed"],
+            "total_failed": self.stats["failed"],
+            "total_retried": self.stats["retried"],
+            "total_dead_lettered": self.stats["dead_lettered"]
+        }
+
+def determine_priority(self, user_id: str, amount_cents: int) -> PaymentPriority:
+    """Business logic to determine payment priority."""
+    # VIP customer check
+    if user_id.startswith("vip_"):
+        return PaymentPriority.HIGH
+    
+    # Large amount check
+    if amount_cents >= 100000:  # $1000+
+        return PaymentPriority.HIGH
+    elif amount_cents >= 10000:  # $100+
+        return PaymentPriority.MEDIUM
+    
+    return PaymentPriority.LOW
 ```
 
----
+## Common Interview Questions
 
-## 🧪 Example Usage Flow
+**Q: How do you prevent starvation of low-priority payments?**
+A: Implement aging - gradually increase priority of old payments, or reserve worker capacity for low priority.
 
-```python
-# Initialize queue
-queue = PaymentProcessingQueue(num_workers=3)
+**Q: How would you scale this across multiple servers?**
+A: Use Redis or RabbitMQ for distributed queues with consistent hashing.
 
-# Register processors
-queue.register_processor("charge_card", charge_card_processor)
-queue.register_processor("fraud_check", fraud_check_processor)
+**Q: What if all workers are busy with low-priority payments?**
+A: Use separate worker pools per priority, or implement work-stealing from higher priority queues.
 
-# Start workers
-queue.start_workers()
+## Implementation Checklist
 
-# Add tasks
-fraud_task = PaymentTask(
-    id="fraud_1",
-    payment_id="pay_123", 
-    task_type="fraud_check",
-    priority=PaymentPriority.HIGH,  # ⚡ High priority!
-    payload={"amount": 10000}
-)
+- [ ] Implement multi-level priority queues
+- [ ] Add worker thread pool for processing
+- [ ] Include retry logic with exponential backoff
+- [ ] Add dead letter queue for failed payments
+- [ ] Implement monitoring and statistics
+- [ ] Handle graceful shutdown of workers
+- [ ] Add payment priority determination logic
 
-regular_task = PaymentTask(
-    id="charge_1",
-    payment_id="pay_124",
-    task_type="charge_card", 
-    priority=PaymentPriority.MEDIUM,
-    payload={"card_id": "card_789"}
-)
+## Time Management Tips
 
-# Enqueue (fraud_task will be processed first)
-queue.enqueue_payment(fraud_task)
-queue.enqueue_payment(regular_task)
-```
+- **Minutes 0-4**: Requirements and priority system design
+- **Minutes 4-12**: Core queue implementation with workers
+- **Minutes 12-18**: Retry logic and failure handling
+- **Minutes 18-22**: Monitoring and advanced features
+- **Minutes 22-25**: Questions and scaling discussion
 
----
-
-## 🔒 Thread Safety
-
-All queue operations are thread-safe using:
-- `queue.Queue()` for thread-safe queuing
-- `threading.Lock()` for shared state
-- `threading.Event()` for shutdown coordination
-
----
-
-## 🧠 Interview Power Tips
-
-* **Priority Inversion**: Prevent low-priority tasks from blocking high-priority ones
-* **Backpressure**: Monitor queue sizes to prevent memory issues
-* **Circuit Breaker**: Integrate with circuit breakers for external service calls
-* **Idempotency**: Ensure tasks can be safely retried
-* **Observability**: Rich metrics for monitoring queue health
-* **Scaling**: Easy to add/remove workers dynamically
-
----
-
-## 🔥 Advanced Features
-
-* **Delayed Tasks**: Schedule tasks for future execution
-* **Task Dependencies**: Wait for other tasks to complete
-* **Rate Limiting**: Limit processing rate per task type
-* **Batch Processing**: Group similar tasks for efficiency
-* **Persistent Storage**: Survive application restarts
+**Pro Tip**: Start with the priority routing logic first - it shows you understand the business requirements!

@@ -4,40 +4,40 @@
 
 Based on real 1-hour coding interviews at fintech/payment companies like Ziina, Stripe, Square, etc.
 
-## All Problems (Ordered Most → Least Likely)
+## All Problems (Optimized for Interview Success)
 
-### 🔥 Core Problems (Most Likely - 60%+ of interviews)
+### 🔥 Core Problems (Must Know - 70%+ of interviews)
 
 **Problem 1: Payment Rate Limiter** - `rate_limiter.py`
 - Prevent payment fraud/abuse - 15-20 minutes
 
-**Problem 2: Transaction Cache** - `transaction_cache.py` 
-- Cache recent transactions with expiry - 15-20 minutes
-
-**Problem 3: Circuit Breaker** - `circuit_breaker.py`
+**Problem 2: Circuit Breaker** - `circuit_breaker.py`
 - Protect against external service failures - 15-20 minutes
 
-**Problem 4: Payment Queue** - `payment_queue.py`
+**Problem 3: Money Handler** - `money_handler.py`
+- Precise decimal arithmetic for payments - 15-20 minutes
+
+**Problem 4: API Client with Retries** - `api_client.py`
+- Reliable external API integration - 20-25 minutes
+
+### ⚡ Common Problems (50%+ of interviews)
+
+**Problem 5: Transaction Cache** - `transaction_cache.py`
+- Cache recent transactions with expiry - 15-20 minutes
+
+**Problem 6: Payment Queue** - `payment_queue.py`
 - Process payments with priorities - 20-25 minutes
 
-### ⚡ Intermediate Problems (Common - 40%+ of interviews)
-
-**Problem 5: Webhook Delivery System** - `webhook_delivery.py`
+**Problem 7: Webhook Delivery System** - `webhook_delivery.py`
 - Reliable delivery with retries - 20-25 minutes
 
-**Problem 6: Connection Pool** - `connection_pool.py`
-- Manage database connections - 15-20 minutes
+### 🎯 Advanced Problems (30%+ of interviews)
 
-**Problem 7: Idempotency Handler** - `idempotency_handler.py`
+**Problem 8: Duplicate Detector** - `duplicate_detector.py`
+- Prevent duplicate transactions in real-time - 20-25 minutes
+
+**Problem 9: Idempotency Handler** - `idempotency_handler.py`
 - Prevent duplicate payment processing - 15-20 minutes
-
-### 🎯 Advanced Problems (Less Common - 20%+ of interviews)
-
-**Problem 8: Balance Tracker** - `balance_tracker.py`
-- Real-time account balance management - 20-25 minutes
-
-**Problem 9: Event Processor** - `event_processor.py`
-- Reliable event delivery system - 20-25 minutes
 
 ## Interview Format (60 minutes)
 
