@@ -89,18 +89,22 @@ CURRENCIES = {
 
 class Money:
     def __init__(self, amount: Union[str, int, float, Decimal], currency: str = "USD"):
+        """Initialize Money with precise decimal amount."""
+        if currency not in CURRENCIES:
+            raise ValueError(f'Unsupported currency: {currency}')
         self.currency = currency
-        self.amount = Decimal(str(amount))  # Convert to string first!
-        self.decimal_places = CURRENCIES.get(currency, 2)  # Default to 2 decimal places
+        decimal_places = CURRENCIES[currency]
+        quantize_exp = Decimal('1') / (10 ** decimal_places)
+        self.amount = Decimal(str(amount)).quantize(quantize_exp, rounding=ROUND_HALF_UP)
     
     def __str__(self) -> str:
         """Format money for display"""
-        if self.currency == "USD":
-            return f"${self.amount:.{self.decimal_places}f}"
-        elif self.currency == "JPY":
-            return f"¥{self.amount:.0f}"
-        else:
-            return f"{self.amount:.{self.decimal_places}f} {self.currency}"
+        decimal_places = CURRENCIES[self.currency]
+        formatted = f"{self.amount:.{decimal_places}f}"
+        return f"{formatted} {self.currency}"
+    
+    def __repr__(self) -> str:
+        return f"Money('{self.amount}', '{self.currency}')"
 ```
 
 ### Step 4: Implement Arithmetic Operations (6-8 minutes)
@@ -109,107 +113,98 @@ class Money:
 def __add__(self, other: 'Money') -> 'Money':
     """Add two money amounts (same currency only)."""
     if self.currency != other.currency:
-        raise ValueError(f"Cannot add {self.currency} and {other.currency}")
-    
+        raise ValueError(f'Cannot add {self.currency} and {other.currency}')
     result_amount = self.amount + other.amount
     return Money(result_amount, self.currency)
 
 def __sub__(self, other: 'Money') -> 'Money':
-    """Subtract two money amounts."""
+    """Subtract two money amounts (same currency only)."""
     if self.currency != other.currency:
-        raise ValueError(f"Cannot subtract {self.currency} and {other.currency}")
-    
+        raise ValueError(f'Cannot subtract {self.currency} and {other.currency}')
     result_amount = self.amount - other.amount
     return Money(result_amount, self.currency)
 
 def __mul__(self, multiplier: Union[int, float, Decimal]) -> 'Money':
     """Multiply money by a number."""
-    result_amount = self.amount * Decimal(str(multiplier))
-    return Money(result_amount, self.currency).round_to_currency()
+    result = self.amount * Decimal(str(multiplier))
+    return Money(result, self.currency)
 
 def __truediv__(self, divisor: Union[int, float, Decimal]) -> 'Money':
     """Divide money by a number."""
     if divisor == 0:
-        raise ValueError("Cannot divide by zero")
-    
-    result_amount = self.amount / Decimal(str(divisor))
-    return Money(result_amount, self.currency).round_to_currency()
+        raise ValueError('Cannot divide by zero.')
+    result = self.amount / Decimal(str(divisor))
+    return Money(result, self.currency)
 
 def __eq__(self, other: 'Money') -> bool:
     """Check if two money amounts are equal."""
-    if self.currency != other.currency:
+    if not isinstance(other, Money):
         return False
-    return self.amount == other.amount
+    return self.currency == other.currency and self.amount == other.amount
 
 def __lt__(self, other: 'Money') -> bool:
     """Check if this money is less than other."""
     if self.currency != other.currency:
-        raise ValueError(f"Cannot compare {self.currency} and {other.currency}")
+        raise ValueError(f'Cannot compare {self.currency} and {other.currency}')
     return self.amount < other.amount
-
-def round_to_currency(self) -> 'Money':
-    """Round money to appropriate decimal places for currency."""
-    rounded_amount = self.amount.quantize(
-        Decimal('0.1') ** self.decimal_places,
-        rounding=ROUND_HALF_UP
-    )
-    return Money(rounded_amount, self.currency)
 ```
 
 ### Step 5: Handle Complex Operations (4-6 minutes)
 
 **Money Splitting (Critical for payments):**
 ```python
-def split(self, parts: int) -> List['Money']:
+def split(self, parts: int) -> list['Money']:
     """Split money into equal parts, handling remainder properly."""
     if parts <= 0:
-        raise ValueError("Cannot split into zero or negative parts")
-    
-    # Calculate base amount per part
-    base_amount = self.amount / parts
-    rounded_base = Money(base_amount, self.currency).round_to_currency()
-    
-    # Create initial split
-    result = [rounded_base] * parts
-    
-    # Calculate and distribute remainder
-    total_distributed = rounded_base.amount * parts
+        raise ValueError("Parts must be a positive integer")
+
+    decimal_places = CURRENCIES[self.currency]
+    quantize_exp = Decimal('1') / (10 ** decimal_places)
+
+    # Base share
+    share = (self.amount / parts).quantize(quantize_exp, rounding=ROUND_HALF_UP)
+
+    # Total of shares might be off due to rounding, compute remainder
+    total_distributed = share * parts
     remainder = self.amount - total_distributed
-    
-    # Distribute remainder cents to first recipients
-    remainder_cents = int(remainder * (10 ** self.decimal_places))
-    cent_value = Decimal('0.01') if self.decimal_places >= 2 else Decimal('1')
-    
-    for i in range(abs(remainder_cents)):
-        if remainder_cents > 0:
-            result[i] = Money(result[i].amount + cent_value, self.currency)
-        else:
-            result[i] = Money(result[i].amount - cent_value, self.currency)
-    
+
+    # Create list with base share
+    result = [Money(share, self.currency) for _ in range(parts)]
+
+    # Distribute remainder (1 cent etc.) to first few recipients
+    i = 0
+    while remainder != Decimal('0.0'):
+        result[i].amount += quantize_exp
+        remainder -= quantize_exp
+        i += 1
+
     return result
 
 def convert_to(self, target_currency: str, exchange_rate: Decimal) -> 'Money':
     """Convert money to different currency."""
-    converted_amount = self.amount * exchange_rate
-    return Money(converted_amount, target_currency).round_to_currency()
+    if target_currency not in CURRENCIES:
+        raise ValueError(f'Unsupported target country: {target_currency}')
+
+    target_amount = self.amount * Decimal(str(exchange_rate))
+    decimal_places = CURRENCIES[target_currency]
+    quantize_exp = Decimal('1') / (10 ** decimal_places)
+    target_amount = target_amount.quantize(quantize_exp, rounding=ROUND_HALF_UP)
+
+    return Money(target_amount, target_currency)
 ```
 
-**Fee Calculations:**
+**Simple Fee Calculations (without separate calculator class):**
 ```python
-class MoneyCalculator:
-    def calculate_fee(self, amount: Money, fee_percentage: Decimal) -> Money:
-        """Calculate fee as percentage of amount."""
-        fee_amount = amount.amount * (fee_percentage / 100)
-        return Money(fee_amount, amount.currency).round_to_currency()
-    
-    def calculate_total_with_tax(self, amount: Money, tax_rate: Decimal) -> Money:
-        """Calculate total amount including tax."""
-        tax_amount = self.calculate_fee(amount, tax_rate)
-        return amount + tax_amount
-    
-    def distribute_amount(self, total: Money, recipients: int) -> List[Money]:
-        """Distribute amount among recipients, handling remainder."""
-        return total.split(recipients)
+# Basic fee calculation as a simple function
+def calculate_fee(amount: Money, fee_percentage: Decimal) -> Money:
+    """Calculate fee as percentage of amount."""
+    fee = amount.amount * fee_percentage
+    return Money(fee, amount.currency)
+
+# Example usage:
+payment = Money("100.00", "USD")
+processing_fee = calculate_fee(payment, Decimal("0.029"))  # 2.9%
+total_with_fee = payment + processing_fee
 ```
 
 ## Money Arithmetic Flow
@@ -290,19 +285,26 @@ def test_money_arithmetic():
     price = Money("10.50", "USD")
     tax = Money("0.84", "USD") 
     total = price + tax
-    assert str(total) == "$11.34"
+    assert str(total) == "11.34 USD"
     
     # Test precision
     unit_price = Money("3.33", "USD")
     quantity = 3
     subtotal = unit_price * quantity
-    assert str(subtotal) == "$9.99"  # Not $9.990000001
+    assert str(subtotal) == "9.99 USD"  # Not $9.990000001
     
     # Test splitting
     bill = Money("100.00", "USD")
     split_3_ways = bill.split(3)
     total_check = sum(split_3_ways, Money("0.00", "USD"))
     assert total_check == bill  # No money lost
+    
+    # Test comparison operations
+    small = Money("5.00", "USD")
+    large = Money("10.00", "USD")
+    same = Money("5.00", "USD")
+    assert small < large
+    assert small == same
     
     # Test currency mismatch
     with pytest.raises(ValueError):
