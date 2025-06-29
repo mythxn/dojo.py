@@ -24,13 +24,13 @@ from typing import Dict, Union
 from dataclasses import dataclass
 
 
-class Currency:
-    """Currency definitions with decimal places."""
-    USD = ("USD", 2)
-    EUR = ("EUR", 2) 
-    GBP = ("GBP", 2)
-    JPY = ("JPY", 0)  # No decimal places
-    BTC = ("BTC", 8)  # 8 decimal places
+CURRENCIES = {
+    "USD": 2,
+    "EUR": 2,
+    "GBP": 2,
+    "JPY": 0,  # No decimal places
+    "BTC": 8,  # 8 decimal places
+}
 
 
 @dataclass

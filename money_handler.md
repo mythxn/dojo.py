@@ -79,20 +79,19 @@ graph TD
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Union
 
-class Currency:
-    """Currency definitions with decimal places."""
-    USD = ("USD", 2)
-    EUR = ("EUR", 2) 
-    GBP = ("GBP", 2)
-    JPY = ("JPY", 0)  # No decimal places
-    BTC = ("BTC", 8)  # 8 decimal places
+CURRENCIES = {
+    "USD": 2,
+    "EUR": 2,
+    "GBP": 2,
+    "JPY": 0,  # No decimal places
+    "BTC": 8,  # 8 decimal places
+}
 
 class Money:
     def __init__(self, amount: Union[str, int, float, Decimal], currency: str = "USD"):
         self.currency = currency
         self.amount = Decimal(str(amount))  # Convert to string first!
-        self._currency_info = getattr(Currency, currency, ("USD", 2))
-        self.decimal_places = self._currency_info[1]
+        self.decimal_places = CURRENCIES.get(currency, 2)  # Default to 2 decimal places
     
     def __str__(self) -> str:
         """Format money for display"""
