@@ -59,9 +59,9 @@ class PaymentProcessingQueue:
 
     def get_queue_stats(self) -> dict:
         return {
-            "high": self.queues[PaymentPriority.HIGH].qsize(),
-            "medium": self.queues[PaymentPriority.MEDIUM].qsize(),
-            "low": self.queues[PaymentPriority.LOW].qsize(),
+            priority.name.lower(): self.queues[priority].qsize()
+            for priority in PRIORITY_ORDER
+        } | {
             "processed": self.processed_tasks,
             "dead_letter": len(self.dead_letter_queue)
         }
